@@ -1,9 +1,4 @@
-package com.bcq.looper;
-
-import com.looper.IMaterial;
-import com.looper.IProcessor;
-import com.looper.Logger;
-import com.looper.TaskLooper;
+package com.looper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,7 +27,7 @@ public class LineQueue {
             @Override
             public boolean onProcess(IMaterial<String> material) {
                 process1(material);
-                return false;
+                return true;
             }
         });
         secondLooper = new TaskLooper<String>("Second-Looper");
@@ -41,7 +36,7 @@ public class LineQueue {
             public boolean onProcess(IMaterial<String> material) {
                 process2(material);
                 // TODO: 2/23/21 此处不自动触发next 在第一个队列处理完毕后 调用apply被动触发
-                return false;
+                return true;
             }
         });
     }
