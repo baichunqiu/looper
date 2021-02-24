@@ -33,13 +33,38 @@ public interface ILooper<M> {
      */
     void next(boolean delete, long delay);
 
-    M pop();
-
+    /**
+     * 获取下一个可用
+     *
+     * @return
+     */
+    IMaterial<M> pop();
 
     /**
-     * 设置原料处理器
+     * 手动移除
      *
-     * @param iProcessor
+     * @param material
+     * @return
      */
-    void setProcessor(IProcessor<M> iProcessor);
+    boolean remove(IMaterial<M> material);
+
+    /**
+     * 清空队列
+     */
+    void clear();
+
+    /**
+     * 处理任务回调
+     *
+     * @param material
+     * @return
+     */
+    boolean onProcess(IMaterial<M> material);
+
+    /**
+     * 处理完毕回调
+     *
+     * @return 处理完毕后是否情况
+     */
+    void onComplete(int count);
 }

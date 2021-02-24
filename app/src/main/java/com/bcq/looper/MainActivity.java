@@ -27,11 +27,9 @@ public class MainActivity extends AppCompatActivity {
 
     public void testApply() {
         List<String> os = new ArrayList<>();
-        for (int i = 0; i < 20; i++) {
+        for (int i = 0; i < 10; i++) {
             os.add("Queue_" + i);
         }
-        boolean ok = PipelineQueue.getQueue().apply(os, 0);
-//        boolean ok = CircluarLineQueue.getQueue().apply(os, 0);
-        Logger.e("PipelineQueue", "apply ok = " + ok);
+        PipelineQueue.getQueue().apply(os, 0);
     }
 }

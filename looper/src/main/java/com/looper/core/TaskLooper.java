@@ -7,30 +7,34 @@ import android.text.TextUtils;
 
 import com.looper.Logger;
 import com.looper.interfaces.ILooper;
-import com.looper.interfaces.IProcessor;
+import com.looper.interfaces.IMaterial;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class TaskLooper<M> extends HandlerThread implements ILooper<M> {
+public abstract class TaskLooper<M> extends HandlerThread implements ILooper<M> {
     private final static String TAG = "TaskLooper";
     private final static int CODE_APPLY = 70001;
     private final static int CODE_NEXT = 70002;
     private final static int CODE_NEXT_AND_DELETE = 70003;
-    public final static boolean DEF_DELETE = true;
     private final List<Material<M>> _materials = new ArrayList<>();
-    private IProcessor<M> iProcessor;
     private Handler loopHander;
-
-    public Object obj;//自定义字段
     private int maxTry = 1;//最大尝试次数
+    private boolean _delete;//执行next时是否删除
+    //自定义字段
+    public Object obj;
 
     public void setMaxTry(int maxTry) {
         this.maxTry = maxTry;
     }
 
-    public TaskLooper(String name) {
+    /**
+     * @param name   名称
+     * @param delete process时是否删除
+     */
+    public TaskLooper(String name, boolean delete) {
         super(TextUtils.isEmpty(name) ? "TaskLooper" : name);
+        this._delete = delete;
         start();
         loopHander = new Handler(getLooper()) {
             @Override
@@ -46,14 +50,16 @@ public class TaskLooper<M> extends HandlerThread implements ILooper<M> {
                         count = _apply((M) m.material, m.delay);
                     }
                     Logger.e(TAG, getName() + " count：" + count);
-                    next(DEF_DELETE, m.delay);
+                    next(_delete, m.delay);
                 } else if (CODE_NEXT == what || CODE_NEXT_AND_DELETE == what) {
                     Material m = _pop(CODE_NEXT_AND_DELETE == what);
-                    if (null != m && null != iProcessor) {
-                        boolean next = iProcessor.onProcess(m);
+                    if (null != m) {
+                        boolean next = onProcess(m);
                         if (next) {
-                            next(DEF_DELETE, m.delay);
+                            next(_delete, m.delay);
                         }
+                    } else {
+                        onComplete(_materials.size());
                     }
                 }
             }
@@ -61,12 +67,8 @@ public class TaskLooper<M> extends HandlerThread implements ILooper<M> {
     }
 
     @Override
-    public void setProcessor(IProcessor<M> iProcessor) {
-        this.iProcessor = iProcessor;
-    }
-
-    @Override
     public void apply(M o, long delay) {
+        Logger.e(TAG, getName() + "apply");
         Material material = new Material(maxTry);
         material.material = o;
         material.delay = delay;
@@ -79,6 +81,7 @@ public class TaskLooper<M> extends HandlerThread implements ILooper<M> {
 
     @Override
     public void apply(List<M> os, long delay) {
+        Logger.e(TAG, getName() + "applys");
         Material<List<M>> material = new Material(maxTry);
         material.material = os;
         material.delay = delay;
@@ -89,7 +92,10 @@ public class TaskLooper<M> extends HandlerThread implements ILooper<M> {
         loopHander.sendMessageDelayed(msg, 0);
     }
 
-    @Override
+    public void next(long delay) {
+        next(_delete, delay);
+    }
+
     public void next(boolean delete, long delay) {
         if (delay < 0) delay = 0;
         loopHander.removeMessages(CODE_NEXT);
@@ -100,9 +106,22 @@ public class TaskLooper<M> extends HandlerThread implements ILooper<M> {
     }
 
     @Override
-    public M pop() {
-        Material<M> m = _pop(false);
-        return null == m ? null : m.material;
+    public IMaterial<M> pop() {
+        return _pop(false);
+    }
+
+    @Override
+    public boolean remove(IMaterial<M> material) {
+        synchronized (_materials) {
+            return _materials.remove(material);
+        }
+    }
+
+    @Override
+    public void clear() {
+        synchronized (_materials) {
+            _materials.clear();
+        }
     }
 
     /**
@@ -159,7 +178,7 @@ public class TaskLooper<M> extends HandlerThread implements ILooper<M> {
                 Material m = _materials.get(i);
                 if (m.available()) {
                     material = m;
-                    m.count++;
+                    m.count = m.count + 1;
                     break;
                 }
             }
@@ -169,4 +188,13 @@ public class TaskLooper<M> extends HandlerThread implements ILooper<M> {
         }
         return material;
     }
+
+
+    @Override
+    public void onComplete(int count) {
+    }
+
+    @Override
+    public abstract boolean onProcess(IMaterial<M> material);
+
 }

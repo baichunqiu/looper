@@ -9,15 +9,15 @@ import com.looper.interfaces.IMaterial;
  */
 public abstract class CircluarQueue extends PipeQueue {
 
-    public CircluarQueue(int looperSize) {
-        super(looperSize);
+    public CircluarQueue(int looperSize, int tryMax, boolean once) {
+        super(looperSize, tryMax, once);
     }
 
     @Override
     public boolean handleProcess(int index, IMaterial material) {
         super.handleProcess(index, material);
         if (index == maxLooper - 1) {//开始处理下一个原料
-            getLooper(0).next(TaskLooper.DEF_DELETE, 0);
+            getLooper(0).next(0);
         }
         return false;
     }
