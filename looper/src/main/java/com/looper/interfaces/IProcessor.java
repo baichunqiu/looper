@@ -1,6 +1,6 @@
-package com.looper;
+package com.looper.interfaces;
 
-public interface IProcessor<T> {
+public interface IProcessor<M> {
 
     /**
      * 处理任务
@@ -8,5 +8,5 @@ public interface IProcessor<T> {
      * @param material
      * @return 是否轮训下一个任务
      */
-    boolean onProcess(IMaterial<T> material);
+    boolean onProcess(IMaterial<M> material);
 }

@@ -1,22 +1,33 @@
-package com.looper;
+package com.looper.core;
 
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.text.TextUtils;
 
+import com.looper.Logger;
+import com.looper.interfaces.ILooper;
+import com.looper.interfaces.IProcessor;
+
 import java.util.ArrayList;
 import java.util.List;
 
-public class TaskLooper<T> extends HandlerThread implements ILooper<T> {
+public class TaskLooper<M> extends HandlerThread implements ILooper<M> {
+    private final static String TAG = "TaskLooper";
     private final static int CODE_APPLY = 70001;
     private final static int CODE_NEXT = 70002;
     private final static int CODE_NEXT_AND_DELETE = 70003;
     public final static boolean DEF_DELETE = true;
-    private final List<IMaterial<T>> _materials = new ArrayList<>();
-
-    private IProcessor<T> iProcessor;
+    private final List<Material<M>> _materials = new ArrayList<>();
+    private IProcessor<M> iProcessor;
     private Handler loopHander;
+
+    public Object obj;//自定义字段
+    private int maxTry = 1;//最大尝试次数
+
+    public void setMaxTry(int maxTry) {
+        this.maxTry = maxTry;
+    }
 
     public TaskLooper(String name) {
         super(TextUtils.isEmpty(name) ? "TaskLooper" : name);
@@ -26,22 +37,22 @@ public class TaskLooper<T> extends HandlerThread implements ILooper<T> {
             public void handleMessage(Message msg) {
                 int what = msg.what;
                 if (CODE_APPLY == what) {
-                    IMaterial m = (Material) msg.obj;
+                    Material m = (Material) msg.obj;
                     int count = 0;
-                    Logger.e("TaskLooper", getName() + " 剩余：" + _materials.size());
-                    if (m.getMaterial() instanceof List) {
-                        count = _apply((List) m.getMaterial(), m.getDelay());
+                    Logger.e(TAG, getName() + " 剩余：" + _materials.size());
+                    if (m.material instanceof List) {
+                        count = _apply((List) m.material, m.delay);
                     } else {
-                        count = _apply((T) m.getMaterial(), m.getDelay());
+                        count = _apply((M) m.material, m.delay);
                     }
-                    Logger.e("TaskLooper", getName() + " count：" + count);
-                    next(DEF_DELETE, m.getDelay());
+                    Logger.e(TAG, getName() + " count：" + count);
+                    next(DEF_DELETE, m.delay);
                 } else if (CODE_NEXT == what || CODE_NEXT_AND_DELETE == what) {
-                    IMaterial m = _pop(CODE_NEXT_AND_DELETE == what);
+                    Material m = _pop(CODE_NEXT_AND_DELETE == what);
                     if (null != m && null != iProcessor) {
                         boolean next = iProcessor.onProcess(m);
                         if (next) {
-                            next(DEF_DELETE, m.getDelay());
+                            next(DEF_DELETE, m.delay);
                         }
                     }
                 }
@@ -50,25 +61,25 @@ public class TaskLooper<T> extends HandlerThread implements ILooper<T> {
     }
 
     @Override
-    public void setProcessor(IProcessor<T> iProcessor) {
+    public void setProcessor(IProcessor<M> iProcessor) {
         this.iProcessor = iProcessor;
     }
 
     @Override
-    public void apply(T o, long delay) {
-        Material material = new Material();
+    public void apply(M o, long delay) {
+        Material material = new Material(maxTry);
         material.material = o;
         material.delay = delay;
 
         Message msg = Message.obtain();
         msg.what = CODE_APPLY;
         msg.obj = material;
-        loopHander.sendMessageDelayed(msg, delay);
+        loopHander.sendMessageDelayed(msg, 0);
     }
 
     @Override
-    public void apply(List<T> os, long delay) {
-        Material<List<T>> material = new Material();
+    public void apply(List<M> os, long delay) {
+        Material<List<M>> material = new Material(maxTry);
         material.material = os;
         material.delay = delay;
 
@@ -88,13 +99,23 @@ public class TaskLooper<T> extends HandlerThread implements ILooper<T> {
         loopHander.sendMessageDelayed(msg, delay);
     }
 
+    @Override
+    public M pop() {
+        Material<M> m = _pop(false);
+        return null == m ? null : m.material;
+    }
 
-    private int _apply(T o, long delay) {
-        if (null == o) {
-            return -1;
-        }
+    /**
+     * 当前线程执行
+     *
+     * @param o
+     * @param delay
+     * @return
+     */
+    private int _apply(M o, long delay) {
+        if (null == o) return -1;
         synchronized (_materials) {
-            Material ma = new Material();
+            Material ma = new Material(maxTry);
             ma.material = o;
             ma.delay = delay;
             if (!_materials.contains(ma)) {
@@ -104,14 +125,21 @@ public class TaskLooper<T> extends HandlerThread implements ILooper<T> {
         return 1;
     }
 
-    private int _apply(List<T> os, long delay) {
+    /**
+     * 当前线程运行
+     *
+     * @param os
+     * @param delay
+     * @return 添加记录数
+     */
+    private int _apply(List<M> os, long delay) {
         int len = null == os ? 0 : os.size();
         if (len < 1) return -1;
         int count = 0;
         synchronized (_materials) {
             Material materi;
             for (int i = 0; i < len; i++) {
-                materi = new Material();
+                materi = new Material(maxTry);
                 materi.material = os.get(i);
                 materi.delay = delay;
                 if (!_materials.contains(materi)) {
@@ -123,15 +151,15 @@ public class TaskLooper<T> extends HandlerThread implements ILooper<T> {
         return count;
     }
 
-    private IMaterial _pop(boolean delete) {
-        IMaterial material = null;
+    private Material _pop(boolean delete) {
+        Material material = null;
         synchronized (_materials) {
             int len = _materials.size();
-            for (int i = len - 1; i > -1; i--) {
-                IMaterial m = _materials.get(i);
+            for (int i = 0; i < len; i++) {
+                Material m = _materials.get(i);
                 if (m.available()) {
                     material = m;
-                    m.countPlus();
+                    m.count++;
                     break;
                 }
             }

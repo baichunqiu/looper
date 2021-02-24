@@ -1,5 +1,9 @@
 package com.looper;
 
+import com.looper.core.TaskLooper;
+import com.looper.interfaces.IMaterial;
+import com.looper.interfaces.IProcessor;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -67,7 +71,7 @@ public class TaskQueue {
 
     private void process1(IMaterial<String> material) {
         // TODO: 2/23/21 模拟first looper 数据处理
-        String result = material.getMaterial() + "_process1";
+        String result = material.material() + "_process1";
         Logger.e("TaskQueue", "process1 result = " + result);
         secondLooper.apply(result, 1000);
 
@@ -75,8 +79,8 @@ public class TaskQueue {
 
     private void process2(IMaterial<String> material) {
         // TODO: 2/23/21 模拟second looper 数据处理
-        String result = material.getMaterial() + "_process2";
+        String result = material.material() + "_process2";
         Logger.e("TaskQueue", "process2 result = " + result);
-        fitstLooper.next(TaskLooper.DEF_DELETE,material.getDelay());
+        fitstLooper.next(TaskLooper.DEF_DELETE,0);
     }
 }
