@@ -24,14 +24,10 @@ public abstract class ProcessLooper<M> extends HandlerThread implements ILooper<
     private final static int CODE_NEXT_AND_DELETE = 70003;
     private final List<IMaterial<M>> _materials = new ArrayList<>();
     private Handler loopHander;
-    private int maxTry = 1;//最大尝试次数
     private boolean _delete;//执行next时是否删除
+    private boolean _pause;//是否暂停
     //自定义字段
     public Object obj;
-
-    public void setMaxTry(int maxTry) {
-        this.maxTry = maxTry;
-    }
 
     /**
      * @param name   名称
@@ -47,21 +43,20 @@ public abstract class ProcessLooper<M> extends HandlerThread implements ILooper<
                 int what = msg.what;
                 if (CODE_APPLY == what) {
                     Object o = msg.obj;
-                    int count = 0;
-                    Logger.e(TAG, getName() + " 剩余：" + _materials.size());
+                    int count = 0, surplus = _materials.size();
                     if (o instanceof IMaterial) {
-                        _apply((IMaterial) o);
+                        count = _apply((IMaterial) o);
                     } else if (o instanceof List) {
-                        _apply((List<IMaterial>) o);
+                        count = _apply((List<IMaterial>) o);
                     }
-                    Logger.e(TAG, getName() + " count：" + count);
-                    next(_delete, 0);
+                    Logger.e(TAG, getName() + " 剩余：" + surplus + " apply ：" + count + " total = " + _materials.size());
+                    loop(_delete, 0);
                 } else if (CODE_NEXT == what || CODE_NEXT_AND_DELETE == what) {
                     IMaterial m = _pop(CODE_NEXT_AND_DELETE == what);
                     if (null != m) {
                         boolean next = onProcess(m);
                         if (next) {
-                            next(_delete, m.delay());
+                            loop(_delete, m.delay());
                         }
                     } else {
                         onComplete(_materials.size());
@@ -88,17 +83,38 @@ public abstract class ProcessLooper<M> extends HandlerThread implements ILooper<
     }
 
     @Override
-    public void next(long delay) {
-        next(_delete, delay);
+    public void loop(long delay) {
+        loop(_delete, delay);
     }
 
-    public void next(boolean delete, long delay) {
+    public void loop(boolean delete, long delay) {
         if (delay < 0) delay = 0;
         loopHander.removeMessages(CODE_NEXT);
         loopHander.removeMessages(CODE_NEXT_AND_DELETE);
+        if (_pause) {
+            return;
+        }
         Message msg = Message.obtain();
         msg.what = delete ? CODE_NEXT_AND_DELETE : CODE_NEXT;
         loopHander.sendMessageDelayed(msg, delay);
+    }
+
+    @Override
+    public void pause(boolean pause) {
+        this._pause = pause;
+        if (!_pause) {//恢复
+            loop(0);
+        }
+    }
+
+    @Override
+    public void release() {
+        clear();
+        loopHander.removeMessages(CODE_APPLY);
+        loopHander.removeMessages(CODE_NEXT);
+        loopHander.removeMessages(CODE_NEXT_AND_DELETE);
+        loopHander = null;
+        quitSafely();
     }
 
     @Override

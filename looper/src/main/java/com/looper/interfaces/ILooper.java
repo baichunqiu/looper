@@ -23,15 +23,24 @@ public interface ILooper<M> {
     void apply(List<IMaterial<M>> materials);
 
 
+    void loop(long delay);
+
     /**
      * 轮循原料
      *
      * @param delete 轮循原料是否从队列中删除
      * @param delay  延迟时间
      */
-    void next(boolean delete, long delay);
+    void loop(boolean delete, long delay);
 
-    void next(long delay);
+    /**
+     * 暂停
+     *
+     * @param pause 标识
+     */
+    void pause(boolean pause);
+
+    void release();
 
     /**
      * 获取下一个可用

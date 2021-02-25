@@ -16,19 +16,15 @@ import java.util.List;
 public abstract class PipeQueue implements IQueue {
     private List<ILooper> loopers = new ArrayList<>(4);
     protected int maxLooper = 1;
-    protected int tryMax = 1;
     protected boolean delete;
 
     /**
      * @param looperSize 队列数
-     * @param tryMax     最大尝试次数
      * @param delete     执行后是否删除
      */
-    public PipeQueue(int looperSize, int tryMax, boolean delete) {
+    public PipeQueue(int looperSize, boolean delete) {
         if (looperSize < 1) looperSize = 1;
-        if (tryMax < 1) tryMax = 1;
         maxLooper = looperSize;
-        this.tryMax = tryMax;
         this.delete = delete;
         init();
     }
@@ -49,7 +45,6 @@ public abstract class PipeQueue implements IQueue {
                     PipeQueue.this.onComplete(index, count);
                 }
             };
-            looper.setMaxTry(tryMax);
             loopers.add(looper);
         }
     }
@@ -64,6 +59,23 @@ public abstract class PipeQueue implements IQueue {
     public void apply(IMaterial o) {
         if (null == o) return;
         loopers.get(0).apply(o);
+    }
+
+    @Override
+    public void pause(boolean pause) {
+        for (int i = 0; i < maxLooper; i++) {
+            ILooper looper = loopers.get(i);
+            looper.pause(pause);
+        }
+    }
+
+    @Override
+    public void release() {
+        for (int i = 0; i < maxLooper; i++) {
+            ILooper looper = loopers.get(i);
+            looper.release();
+        }
+        loopers.clear();
     }
 
     @Override
@@ -92,7 +104,7 @@ public abstract class PipeQueue implements IQueue {
 
     @Override
     public void onComplete(int index, int count) {
-        Logger.e("PipeQueue", "onComplete:" + count);
+        Logger.e("PipeQueue", "onComplete: index = " + index + " count = " + count);
     }
 
     @Override
