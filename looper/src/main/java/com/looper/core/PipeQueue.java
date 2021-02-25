@@ -1,6 +1,7 @@
 package com.looper.core;
 
 import com.looper.Logger;
+import com.looper.interfaces.ILooper;
 import com.looper.interfaces.IMaterial;
 import com.looper.interfaces.IQueue;
 
@@ -12,8 +13,8 @@ import java.util.List;
  * 描述：第一道工序（looper）处理，并流向下道工序，直至最后一道工序完成，第一道工序开始处理下一个原料，如此往复。
  * 注意：第一道工序需要等待最后一道工序执行完毕后才能分发下一个原料
  */
-public abstract class PipeQueue<R> implements IQueue<R> {
-    private List<TaskLooper> loopers = new ArrayList<>(4);
+public abstract class PipeQueue implements IQueue {
+    private List<ILooper> loopers = new ArrayList<>(4);
     protected int maxLooper = 1;
     protected int tryMax = 1;
     protected boolean delete;
@@ -34,10 +35,10 @@ public abstract class PipeQueue<R> implements IQueue<R> {
 
     private void init() {
         loopers.clear();
-        TaskLooper looper;
+        ProcessLooper looper;
         for (int i = 0; i < maxLooper; i++) {
             final int index = i;
-            looper = new TaskLooper(this.getClass().getSimpleName() + i, delete) {
+            looper = new ProcessLooper(this.getClass().getSimpleName() + "Looper_" + i, delete) {
                 @Override
                 public boolean onProcess(IMaterial material) {
                     return handleProcess(index, material);
@@ -45,7 +46,7 @@ public abstract class PipeQueue<R> implements IQueue<R> {
 
                 @Override
                 public void onComplete(int count) {
-                    PipeQueue.this.onComplete(count);
+                    PipeQueue.this.onComplete(index, count);
                 }
             };
             looper.setMaxTry(tryMax);
@@ -54,20 +55,23 @@ public abstract class PipeQueue<R> implements IQueue<R> {
     }
 
     @Override
-    public void apply(List os, long delay) {
+    public void apply(List<IMaterial> os) {
         if (null == os || os.isEmpty()) return;
-        loopers.get(0).apply(os, delay);
+        loopers.get(0).apply(os);
     }
 
     @Override
-    public void apply(Object o, long delay) {
+    public void apply(IMaterial o) {
         if (null == o) return;
-        loopers.get(0).apply(o, delay);
+        loopers.get(0).apply(o);
     }
 
-    protected TaskLooper getLooper(int index) {
-        if (index < 0 || index >= maxLooper) return null;
-        return loopers.get(index);
+    @Override
+    public ILooper getLooper(int index) {
+        if (index > -1 && index < maxLooper) {
+            return loopers.get(index);
+        }
+        return null;
     }
 
     /**
@@ -77,19 +81,20 @@ public abstract class PipeQueue<R> implements IQueue<R> {
      * @param material
      */
     protected boolean handleProcess(int index, IMaterial material) {
-        TaskLooper next = getLooper(index + 1);
-        R result = onProcess(index, material, next);
+        IMaterial result = onProcess(index, material);
+        ILooper next = getLooper(index + 1);
         if (null != result && null != next) {//分发至下一工序
-            next.apply(result, material.delay());
+            next.apply(result);
         }
         return true;
     }
 
 
-    public void onComplete(int count) {
+    @Override
+    public void onComplete(int index, int count) {
         Logger.e("PipeQueue", "onComplete:" + count);
     }
 
     @Override
-    public abstract R onProcess(int index, IMaterial material, TaskLooper next);
+    public abstract IMaterial onProcess(int index, IMaterial material);
 }

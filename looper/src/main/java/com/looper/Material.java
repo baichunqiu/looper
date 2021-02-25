@@ -1,15 +1,14 @@
-package com.looper.core;
+package com.looper;
 
 import com.looper.interfaces.IMaterial;
 
 public class Material<M> implements IMaterial<M> {
-    protected long delay;//任务处理延迟时间
-    protected M material;//原料
-    protected int count = 0;//尝试次数
-    protected int max = 0;//最大次数
+    private long delay = 0;//任务处理延迟时间
+    private M material;//原料
+    private int count = 0;//尝试次数
 
-    protected Material(int max) {
-        this.max = max;
+    public Material(M material) {
+        this.material = material;
     }
 
     @Override
@@ -19,12 +18,17 @@ public class Material<M> implements IMaterial<M> {
 
     @Override
     public boolean available() {
-        return count < max;
+        return count >= 0 && count < 3;
     }
 
     @Override
     public long delay() {
         return delay;
+    }
+
+    @Override
+    public void countPlus() {
+        this.count++;
     }
 
     @Override

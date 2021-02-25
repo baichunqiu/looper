@@ -11,19 +11,17 @@ public interface ILooper<M> {
     /**
      * 添加任务原料
      *
-     * @param m     原料
-     * @param delay 延迟时间,执行时和下一任务处理间隔 自动处理next的延迟时间
+     * @param material 原料
      */
-    void apply(M m, long delay);
-
+    void apply(IMaterial<M> material);
 
     /**
      * 批量添加
      *
-     * @param ms
-     * @param delay
+     * @param materials
      */
-    void apply(List<M> ms, long delay);
+    void apply(List<IMaterial<M>> materials);
+
 
     /**
      * 轮循原料
@@ -32,6 +30,8 @@ public interface ILooper<M> {
      * @param delay  延迟时间
      */
     void next(boolean delete, long delay);
+
+    void next(long delay);
 
     /**
      * 获取下一个可用
@@ -64,7 +64,7 @@ public interface ILooper<M> {
     /**
      * 处理完毕回调
      *
-     * @return 处理完毕后是否情况
+     * @param count 处理失败的记录数
      */
     void onComplete(int count);
 }

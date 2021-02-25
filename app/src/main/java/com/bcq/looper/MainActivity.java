@@ -5,8 +5,9 @@ import android.view.View;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.looper.Logger;
 import com.looper.PipelineQueue;
+import com.looper.Material;
+import com.looper.interfaces.IMaterial;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,10 +27,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void testApply() {
-        List<String> os = new ArrayList<>();
+        List<IMaterial> os = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
-            os.add("Queue_" + i);
+            os.add(new Material("Queue_" + i,2));
         }
-        PipelineQueue.getQueue().apply(os, 0);
+        PipelineQueue.getQueue().apply(os);
     }
 }

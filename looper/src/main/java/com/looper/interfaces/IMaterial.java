@@ -17,4 +17,5 @@ public interface IMaterial<M> {
      */
     long delay();
 
+    void countPlus();
 }
